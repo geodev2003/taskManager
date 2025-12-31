@@ -6,6 +6,7 @@ const requestId = require('./src/middlewares/requestId');
 const errorHandler = require('./src/middlewares/errorHandler');
 
 const usersRouter = require('./src/routes/users.router');
+const authRouter = require('./src/routes/auth.router');
 
 dotenv.config();
 
@@ -20,7 +21,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/users', usersRouter);
-
+app.use('/api/auth', authRouter);
 app.use(errorHandler);
 
 async function testDBConnection() {

@@ -1,26 +1,65 @@
 const usersService = require('../services/users.service');
+const AppError = require('../utils/appError');
 
-async function registerUser(req, res, next) {
+/**
+ * Lấy thông tin cá nhân của người dùng đang đăng nhập
+ * GET /users/me
+ */
+async function getProfile(req, res, next) {
     try {
-        const userId = await usersService.createUser(req.body);
-        res.status(201).json({ message: 'User created successfully', data: { userId } });
+        // Dữ liệu người dùng đã được authMiddleware gán vào req.user
+        const userId = req.user.uId;
+
+        if (!userId) {
+            throw new AppError("UNAUTHORIZED", "User identity not found in request", 401);
+        }
+
+        // Lấy thông tin chi tiết từ service (Service này đã loại bỏ mật khẩu)
+        const user = await usersService.getUserById(userId);
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Get profile success',
+            data: {
+                user
+            }
+        });
     } catch (error) {
+        // Chuyển lỗi sang errorHandler middleware
         next(error);
     }
 }
 
-async function login(req, res, next) {
+/**
+ * Cập nhật thông tin cá nhân
+ * PATCH /users/me
+ */
+async function updateProfile(req, res, next) {
     try {
-        const { uEmail, uPassword } = req.body;
-        const result = await usersService.loginUser({ uEmail, uPassword });
+        const userId = req.user.uId;
+        const updateData = req.body;
 
-        res.status(200).json({ message: 'Login successful', ...result });
+        // Chặn không cho cập nhật các trường nhạy cảm nếu có trong body
+        delete updateData.uPassword;
+        delete updateData.uRole;
+
+        // Bạn có thể triển khai hàm update trong usersService sau này
+        // const updatedUser = await usersService.updateUser(userId, updateData);
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Profile update function is ready to be implemented',
+            data: {
+                userId,
+                updatedFields: Object.keys(updateData)
+            }
+        });
     } catch (error) {
         next(error);
     }
 }
 
 module.exports = {
-    registerUser,
-    login
+    getProfile,
+    updateProfile,
 };

@@ -1,106 +1,93 @@
 const { pool, sql } = require("../config/db");
 const bcrypt = require("bcrypt");
 const AppError = require("../utils/appError");
-const jwt = require("jsonwebtoken");
 
-async function createUser(user) {
+/**
+ * Tìm kiếm người dùng bằng Email
+ * Hỗ trợ kiểm tra trùng lặp hoặc lấy thông tin đăng nhập
+ */
+async function getUserByEmail(uEmail) {
+  const result = await pool.request()
+    .input("uEmail", sql.VarChar, uEmail)
+    .query(`
+      SELECT uId, uName, uEmail, uPassword, uRole 
+      FROM users 
+      WHERE uEmail = @uEmail AND uDeleteAt IS NULL
+    `);
+  return result.recordset[0];
+}
+
+/**
+ * Tạo người dùng mới
+ * Sử dụng cho luồng Register
+ */
+async function createUser({ uName, uEmail, uPhone, uPassword }) {
   try {
-    const { uName, uEmail, uPhone, uPassword } = user;
-
-    const salt = 10;
-    const hashedPassword = await bcrypt.hash(uPassword, salt);
-
-    const result = await pool
-      .request()
-      .input("uName", sql.VarChar, uName)
-      .input("uEmail", sql.VarChar, uEmail)
-      .input("uPhone", sql.VarChar, uPhone)
-      .input("uPassword", sql.VarChar, hashedPassword).query(`
-            INSERT INTO users (uName, uEmail, uPhone, uPassword)
-            OUTPUT INSERTED.uId
-            VALUES (@uName, @uEmail, @uPhone, @uPassword);
-
-        `);
-
-    return result.recordset[0].uId;
-  } catch (error) {
-    if (error.number === 2627) {
+    // 1. Kiểm tra email đã tồn tại hay chưa
+    const existingUser = await getUserByEmail(uEmail);
+    if (existingUser) {
       throw new AppError(
-        "EMAIL_ALREADY_EXISTS",
-        "Email already exists",
-        409,
-        error.message
+        "EMAIL_ALREADY_EXISTS", 
+        "Email address is already registered", 
+        409
       );
     }
-    throw new AppError(
-      "USER_CREATE_FAILED",
-      "Failed to create user",
-      500,
-      error.message
-    );
+
+    // 2. Hash mật khẩu bảo mật
+    const hashedPassword = await bcrypt.hash(uPassword, 10);
+
+    // 3. Thực hiện lưu vào Database
+    const result = await pool.request()
+      .input("uName", sql.NVarChar, uName) // Hỗ trợ tiếng Việt có dấu
+      .input("uEmail", sql.VarChar, uEmail)
+      .input("uPhone", sql.VarChar, uPhone)
+      .input("uPassword", sql.VarChar, hashedPassword)
+      .query(`
+        INSERT INTO users (uName, uEmail, uPhone, uPassword, uRole)
+        OUTPUT INSERTED.uId
+        VALUES (@uName, @uEmail, @uPhone, @uPassword, 'user')
+      `);
+
+    return result.recordset[0].uId;
+
+  } catch (error) {
+    // Xử lý lỗi trùng lặp key từ SQL Server (Error 2627)
+    if (error.number === 2627) {
+      throw new AppError("EMAIL_ALREADY_EXISTS", "Email already exists", 409);
+    }
+
+    // Nếu là lỗi chúng ta chủ động throw thì gửi tiếp đi
+    if (error instanceof AppError) throw error;
+
+    // Lỗi không xác định khác
+    throw new AppError("USER_CREATE_FAILED", "An error occurred while creating user", 500);
   }
 }
 
-async function loginUser(payload) {
-    try {
-      const { uEmail, uPassword } = payload;
-  
-      const result = await pool.request()
-        .input('uEmail', sql.VarChar, uEmail)
-        .query(`
-          SELECT uId, uEmail, uPassword, uRole
-          FROM users
-          WHERE uEmail = @uEmail AND uDeleteAt IS NULL
-        `);
-  
-      const user = result.recordset[0];
-  
-      if (!user) {
-        throw new AppError(
-          'LOGIN_FAILED',
-          'Invalid email or password',
-          401
-        );
-      }
-  
-      const isMatch = await bcrypt.compare(uPassword, user.uPassword);
-  
-      if (!isMatch) {
-        throw new AppError(
-          'LOGIN_FAILED',
-          'Invalid email or password',
-          401
-        );
-      }
-  
-      const token = jwt.sign(
-        { uId: user.uId, uRole: user.uRole },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
-      );
-  
-      return {
-        accessToken: token,
-        user: {
-          uId: user.uId,
-          uEmail: user.uEmail,
-          uRole: user.uRole
-        }
-      };
-  
-    } catch (error) {
-      if (error instanceof AppError) throw error;
-  
-      throw new AppError(
-        'LOGIN_FAILED',
-        'Failed to login',
-        500,
-        error.message
-      );
-    }
+/**
+ * Lấy thông tin chi tiết người dùng bằng ID
+ * Loại bỏ password để đảm bảo an toàn dữ liệu trả về
+ */
+async function getUserById(uId) {
+  const result = await pool.request()
+    .input("uId", sql.Int, uId)
+    .query(`
+      SELECT uId, uName, uEmail, uPhone, uRole, uCreateAt
+      FROM users
+      WHERE uId = @uId AND uDeleteAt IS NULL
+    `);
+
+  const user = result.recordset[0];
+
+  if (!user) {
+    throw new AppError("USER_NOT_FOUND", "User not found or has been deleted", 404);
   }
-  
+
+  return user;
+}
+
 module.exports = {
   createUser,
-  loginUser,
+  getUserById,
+  getUserByEmail
 };
