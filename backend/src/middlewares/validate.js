@@ -10,7 +10,7 @@ function validate(schema) {
       });
     }
 
-    req.body = result.data; // If validation passes, set the validated data to req.body
+    req.body = result.data; // Nếu validation passes, set the validated data to req.body
     next();
   };
 }

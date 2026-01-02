@@ -15,7 +15,7 @@ BEGIN
 		tDeleteAt DATETIME NULL,
 		tUpdate DATETIME NULL,
 		tStatus VARCHAR(30) DEFAULT 'todo',
-		
+		tIsDeleted BIT DEFAULT 0,
 		CONSTRAINT fk_task_user
 			FOREIGN KEY (uId) REFERENCES users(uId)
 	);
