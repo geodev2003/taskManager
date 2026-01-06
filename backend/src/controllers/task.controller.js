@@ -1,87 +1,231 @@
-const taskService = require('../services/task.service');
+const taskService = require("../services/task.service");
+const AppError = require("../utils/appError");
 
-const createTask = async (req, res) => {
-    try {
-        const task = await taskService.createTask(req.body);
-        res.status(201).json(task);
-    } catch (error) {
-        res.status(500).json({
-            "status": "error",
-            "message": "Failed to create task",
-            "error": error.message
-        });
-    }
-};
+/**
+ * CREATE TASK
+ * POST /tasks
+ */
+async function createTask(req, res, next) {
+  try {
+    const uId = req.user.uId;
+    const idempotencyKey = req.headers["idempotency-key"];
 
-const getTasks = async (req, res) => {
-    try {
-        const tasks = await taskService.getTasks();
-        res.status(200).json(tasks);
-    } catch (error) {
-        res.status(500).json({
-            "status": "error",
-            "message": "Failed to get tasks",
-            "error": error.message
-        });
-    }
-};
+    const result = await taskService.createTask(uId, req.body, idempotencyKey);
 
-const getTaskById = async (req, res) => {
-    try {
-        const task = await taskService.getTaskById(req.params.id);
-        res.status(200).json(task);
-    } catch (error) {
-        res.status(500).json({
-            "status": "error",
-            "message": "Failed to get task by id",
-            "error": error.message
-        });
-    }
-};
+    res.status(201).json({
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
 
-const updateTask = async (req, res) => {
+/**
+ * GET TASK LIST
+ * GET /tasks?search=&page=&limit=
+ */
+async function getTasks(req, res, next) {
     try {
-        const task = await taskService.updateTask(req.params.id, req.body);
-        res.status(200).json(task);
-    } catch (error) {
-        res.status(500).json({
-            "status": "error",
-            "message": "Failed to update task",
-            "error": error.message
-        });
+      const { search = "", page = 1, limit = 10 } = req.query;
+  
+      const result = await taskService.getTasks(
+        req.user,
+        search,
+        Number(page),
+        Number(limit)
+      );
+  
+      res.status(200).json({
+        success: true,
+        data: result
+      });
+    } catch (err) {
+      next(err);
     }
-};
+  }
 
-const deleteTask = async (req, res) => {
-    try {
-        const task = await taskService.deleteTask(req.params.id);
-        res.status(200).json(task);
-    } catch (error) {
-        res.status(500).json({
-            "status": "error",
-            "message": "Failed to delete task",
-            "error": error.message
-        });
-    }
-};
+/**
+ * GET MY DELETED TASKS (USER'S OWN TASKS)
+ * GET /tasks/deleted/my?search=&page=&limit=
+ */
+async function getMyDeletedTasks(req, res, next) {
+  try {
+    const { search = "", page = 1, limit = 10 } = req.query;
 
-const deleteSoftTask = async (req, res) => {
+    const result = await taskService.getMyDeletedTasks(
+      req.user.uId,
+      search,
+      Number(page),
+      Number(limit)
+    );
+
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET SOFT DELETED TASKS (ADMIN ONLY)
+ * GET /tasks/deleted?search=&page=&limit=
+ */
+async function getSoftDeletedTasks(req, res, next) {
+  try {
+    const { search = "", page = 1, limit = 10 } = req.query;
+
+    const result = await taskService.getSoftDeletedTasks(
+      req.user,
+      search,
+      Number(page),
+      Number(limit)
+    );
+
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+  
+
+/**
+ * UPDATE TASK
+ * PUT /tasks/:id
+ */
+const updateTask = async (req, res, next) => {
     try {
-        const task = await taskService.deleteSoftTask(req.params.id);
-        res.status(200).json(task);
-    } catch (error) {
-        res.status(500).json({
-            "status": "error",
-            "message": "Failed to delete soft task",
-            "error": error.message
-        });
+      const user = req.user; // { uId, uRole }
+      const tId = Number(req.params.id);
+  
+      if (!Number.isInteger(tId)) {
+        throw new AppError(
+          "INVALID_TASK_ID",
+          "Task id must be a number",
+          400
+        );
+      }
+  
+      const updatedTask = await taskService.updateTask(
+        user,
+        tId,
+        req.body
+      );
+  
+      res.status(200).json({
+        message: "Task updated successfully",
+        data: updatedTask
+      });
+    } catch (err) {
+      next(err);
     }
-};
+  };
+
+/**
+ * SOFT DELETE TASK
+ * DELETE /tasks/:id
+ */
+const deleteSoftTask = async (req, res, next) => {
+    try {
+      const tId = Number(req.params.id);
+  
+      if (Number.isNaN(tId)) {
+        throw new AppError("INVALID_TASK_ID", "Task id is invalid", 400);
+      }
+  
+      const result = await taskService.softDeleteTask(req.user, tId);
+  
+      res.status(200).json({
+        message: result.message
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+/**
+ * RESTORE TASK
+ * POST /tasks/:id/restore
+ */
+async function restoreTask(req, res, next) {
+  try {
+    const tId = Number(req.params.id);
+
+    if (!Number.isInteger(tId) || tId <= 0) {
+      throw new AppError("INVALID_TASK_ID", "Task id is invalid", 400);
+    }
+
+    const result = await taskService.restoreTask(req.user, tId);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * HARD DELETE TASK
+ * DELETE /tasks/:id/hard
+ * (nếu bạn expose route này)
+ */
+const deleteHardTask = async (req, res, next) => {
+    try {
+      const tId = Number(req.params.id);
+  
+      if (Number.isNaN(tId)) {
+        throw new AppError("INVALID_TASK_ID", "Task id is invalid", 400);
+      }
+  
+      const result = await taskService.hardDeleteTask(req.user, tId);
+  
+      res.status(200).json({
+        message: result.message
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+/**
+ * GET TASK AUDITS
+ * GET /tasks/:id/audits
+ */
+async function getTaskAudits(req, res, next) {
+  try {
+    const uId = req.user.uId;
+    const tId = Number(req.params.id);
+
+    if (!Number.isInteger(tId) || tId <= 0) {
+      throw new AppError("INVALID_TASK_ID", "Task id must be a valid positive number", 400);
+    }
+
+    const result = await taskService.getTaskAudits(uId, tId);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
 
 module.exports = {
-    createTask,
-    getTasks,
-    getTaskById,
-    updateTask,
-    deleteTask
+  createTask,
+  getTasks,
+  getMyDeletedTasks,
+  getSoftDeletedTasks,
+  updateTask,
+  deleteSoftTask,
+  deleteHardTask,
+  restoreTask,
+  getTaskAudits,
 };

@@ -13,7 +13,7 @@ BEGIN
 		tChild INT,
 		tCreateAt DATETIME DEFAULT CURRENT_TIMESTAMP,
 		tDeleteAt DATETIME NULL,
-		tUpdate DATETIME NULL,
+		tUpdateAt DATETIME NULL,
 		tStatus VARCHAR(30) DEFAULT 'todo',
 		tIsDeleted BIT DEFAULT 0,
 		CONSTRAINT fk_task_user

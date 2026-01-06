@@ -19,7 +19,7 @@ async function seedUsers(count = 30) {
     const last = randomItem(lastNames);
     const role = randomItem(roles);
 
-    // 👉 đảm bảo email KHÔNG BAO GIỜ TRÙNG
+    // đảm bảo email KHÔNG BAO GIỜ TRÙNG
     const email = `${first.toLowerCase()}${last.toLowerCase()}_${Date.now()}_${i}@example.com`;
 
     try {

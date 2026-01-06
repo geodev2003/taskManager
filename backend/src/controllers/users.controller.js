@@ -40,18 +40,16 @@ async function updateProfile(req, res, next) {
         const updateData = req.body;
 
         // Chặn không cho cập nhật các trường nhạy cảm nếu có trong body
-        delete updateData.uPassword;
+        // delete updateData.uPassword; // Cho phép update password
         delete updateData.uRole;
 
-        // Bạn có thể triển khai hàm update trong usersService sau này
-        // const updatedUser = await usersService.updateUser(userId, updateData);
+        const updatedUser = await usersService.updateUser(userId, updateData);
 
         res.status(200).json({
             status: 'success',
-            message: 'Profile update function is ready to be implemented',
+            message: 'Update profile success',
             data: {
-                userId,
-                updatedFields: Object.keys(updateData)
+                user: updatedUser
             }
         });
     } catch (error) {

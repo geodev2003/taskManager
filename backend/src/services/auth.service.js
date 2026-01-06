@@ -11,7 +11,7 @@ async function loginUser({ uEmail, uPassword }) {
     const result = await pool.request()
         .input("uEmail", sql.VarChar, uEmail)
         .query(`
-            SELECT uId, uEmail, uPassword, uRole, uName 
+            SELECT uId, uEmail, uPassword, uRole, uName, uPhone, uAddress 
             FROM users 
             WHERE uEmail = @uEmail 
               AND uDeleteAt IS NULL

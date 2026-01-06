@@ -47,3 +47,5 @@ backend/prisma/migrations/
 tmp/
 temp/
 
+INTERVIEW_ANSWERS.md
+REQUIREMENTS_CHECK.md

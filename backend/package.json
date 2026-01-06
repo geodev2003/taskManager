@@ -10,10 +10,14 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "migrate": "node src/migrations/runMigrations.js",
-    "seed": "node src/seeds/index.js"
+    "seed": "node src/seeds/index.js",
+    "test": "jest --runInBand --detectOpenHandles",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
@@ -21,6 +25,12 @@
     "mssql": "^12.2.0",
     "mysql": "^2.18.1",
     "nodemon": "^3.1.11",
+    "uuid": "^9.0.1",
+    "web-push": "^3.6.7",
     "zod": "^4.3.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
   }
 }

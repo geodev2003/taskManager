@@ -34,7 +34,7 @@ async function seedTasks() {
 
     const users = usersRes.recordset;
     if (users.length === 0) {
-      console.log('❌ No users found');
+      console.log('No users found');
       return;
     }
 

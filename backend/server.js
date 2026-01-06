@@ -1,28 +1,5 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const { sql, pool, poolConnection } = require('./src/config/db');
-
-const requestId = require('./src/middlewares/requestId');
-const errorHandler = require('./src/middlewares/errorHandler');
-
-const usersRouter = require('./src/routes/users.router');
-const authRouter = require('./src/routes/auth.router');
-
-dotenv.config();
-
-const app = express();
-
-app.use(requestId);
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-app.get('/', (req, res) => {
-    res.send('Hello World');
-});
-
-app.use('/api/users', usersRouter);
-app.use('/api/auth', authRouter);
-app.use(errorHandler);
+const app = require('./app');
+const { poolConnection } = require('./src/config/db');
 
 async function testDBConnection() {
     try {
@@ -33,7 +10,8 @@ async function testDBConnection() {
     }
 }
 
-const PORT = process.env.PORT || 3000;  
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server is running on: http://localhost:${PORT}`);
+    testDBConnection();
 });

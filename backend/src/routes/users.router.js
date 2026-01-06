@@ -15,4 +15,7 @@ router.get('/me', authMiddleware, usersController.getProfile);
 // Cập nhật thông tin cá nhân (Hàm updateProfile đã thêm vào controller)
 router.patch('/me', authMiddleware, usersController.updateProfile);
 
+// users.router.js
+router.put('/profile', authMiddleware, usersController.updateProfile);
+
 module.exports = router;

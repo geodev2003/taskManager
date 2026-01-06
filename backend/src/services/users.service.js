@@ -27,8 +27,8 @@ async function createUser({ uName, uEmail, uPhone, uPassword }) {
     const existingUser = await getUserByEmail(uEmail);
     if (existingUser) {
       throw new AppError(
-        "EMAIL_ALREADY_EXISTS", 
-        "Email address is already registered", 
+        "EMAIL_ALREADY_EXISTS",
+        "Email address is already registered",
         409
       );
     }
@@ -72,7 +72,7 @@ async function getUserById(uId) {
   const result = await pool.request()
     .input("uId", sql.Int, uId)
     .query(`
-      SELECT uId, uName, uEmail, uPhone, uRole, uCreateAt
+      SELECT uId, uName, uEmail, uPhone, uRole, uAddress, uCreateAt
       FROM users
       WHERE uId = @uId AND uDeleteAt IS NULL
     `);
@@ -86,8 +86,66 @@ async function getUserById(uId) {
   return user;
 }
 
+
+async function updateUser(userId, updateData) {
+  try {
+    // Kiểm tra user tồn tại
+    const existingUser = await getUserById(userId);
+
+    // Xây dựng câu query động dựa trên dữ liệu cần update
+    const updateFields = [];
+    const request = pool.request().input("uId", sql.Int, userId);
+
+    // Cập nhật tên
+    if (updateData.uName !== undefined) {
+      updateFields.push("uName = @uName");
+      request.input("uName", sql.NVarChar, updateData.uName);
+    }
+
+    // Cập nhật số điện thoại
+    if (updateData.uPhone !== undefined) {
+      updateFields.push("uPhone = @uPhone");
+      request.input("uPhone", sql.VarChar, updateData.uPhone);
+    }
+
+    // Cập nhật địa chỉ
+    if (updateData.uAddress !== undefined) {
+      updateFields.push("uAddress = @uAddress");
+      request.input("uAddress", sql.NVarChar, updateData.uAddress);
+    }
+
+    // Cập nhật mật khẩu (nếu có)
+    if (updateData.uPassword) {
+      const hashedPassword = await bcrypt.hash(updateData.uPassword, 10);
+      updateFields.push("uPassword = @uPassword");
+      request.input("uPassword", sql.VarChar, hashedPassword);
+    }
+
+    // Nếu không có trường nào để update
+    if (updateFields.length === 0) {
+      return existingUser;
+    }
+
+    // Thực hiện update
+    await request.query(`
+      UPDATE users 
+      SET ${updateFields.join(", ")}
+      WHERE uId = @uId AND uDeleteAt IS NULL
+    `);
+
+    // Lấy thông tin user sau khi update (không bao gồm password)
+    const updatedUser = await getUserById(userId);
+    return updatedUser;
+
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError("USER_UPDATE_FAILED", "An error occurred while updating user", 500);
+  }
+}
+
 module.exports = {
   createUser,
   getUserById,
-  getUserByEmail
+  getUserByEmail,
+  updateUser
 };
